@@ -8,19 +8,21 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # changed
 
 load_dotenv()
 
 from graph.graph import builder
 
 graph = None
+DATABASE_URL = os.environ["DATABASE_URL"]  # reads from .env
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global graph
-    async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as checkpointer:
+    async with AsyncPostgresSaver.from_conn_string(DATABASE_URL) as checkpointer:
+        await checkpointer.setup()  # creates tables on first run, no-op after
         graph = builder.compile(checkpointer=checkpointer)
         yield
 
@@ -31,7 +33,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://multi-agent-research-tool-1.onrender.com"  # add this once you know it
+        "https://multi-agent-research-tool-1.onrender.com",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
@@ -60,7 +62,7 @@ async def research(req: QueryRequest):
     async def stream_events():
         yield f"data: {json.dumps({'thread_id': thread_id})}\n\n"
 
-        writer_active = False  # track when writer node is running
+        writer_active = False
 
         async for event in graph.astream_events(
             {"query": req.query, "messages": []},
@@ -70,15 +72,11 @@ async def research(req: QueryRequest):
             kind = event["event"]
             name = event.get("name", "")
 
-            # Track when writer starts
             if kind == "on_chain_start" and name == "writer":
                 writer_active = True
-
-            # Track when writer ends
             if kind == "on_chain_end" and name == "writer":
                 writer_active = False
 
-            # Node completion pings
             if kind == "on_chain_end":
                 if name in ("planner", "researcher", "critic", "writer"):
                     payload: dict = {"node": name, "status": "done"}
@@ -87,10 +85,7 @@ async def research(req: QueryRequest):
                         output = event.get("data", {}).get("output", {})
                         sqs = output.get("sub_questions", [])
                         payload["scores"] = [
-                            {
-                                "question": sq["question"][:60],
-                                "score": sq["quality_score"],
-                            }
+                            {"question": sq["question"][:60], "score": sq["quality_score"]}
                             for sq in sqs
                         ]
                         payload["retry_count"] = output.get("retry_count", 0)
@@ -98,7 +93,6 @@ async def research(req: QueryRequest):
 
                     yield f"data: {json.dumps(payload)}\n\n"
 
-            # Stream writer tokens — catch ALL model stream events when writer is active
             if kind == "on_chat_model_stream" and writer_active:
                 chunk = event.get("data", {}).get("chunk")
                 if chunk and hasattr(chunk, "content") and chunk.content:
@@ -113,14 +107,11 @@ async def research(req: QueryRequest):
 async def get_report(thread_id: str):
     config = make_config(thread_id)
     state = await graph.aget_state(config)
-
     if not state or not state.values:
         raise HTTPException(status_code=404, detail="No state found")
-
     report = state.values.get("final_report")
     if not report:
         raise HTTPException(status_code=404, detail="Report not ready yet")
-
     return {"thread_id": thread_id, "report": report}
 
 
@@ -128,10 +119,8 @@ async def get_report(thread_id: str):
 async def resume(thread_id: str):
     config = make_config(thread_id)
     state = await graph.aget_state(config)
-
     if not state or not state.values:
         raise HTTPException(status_code=404, detail="No state found for this thread_id")
-
     v = state.values
     return {
         "thread_id": thread_id,
@@ -149,7 +138,6 @@ async def history(thread_id: str):
     snapshots = []
     async for snapshot in graph.aget_state_history(config):
         snapshots.append(snapshot)
-
     return {
         "thread_id": thread_id,
         "total_checkpoints": len(snapshots),
@@ -178,3 +166,4 @@ async def health():
   --max-time 120'''
   
   #curl http://127.0.0.1:8000/report/test-004 | python -c "import sys,json; print(json.load(sys.stdin)['report'])"
+  #https://multi-agent-research-tool-1.onrender.com

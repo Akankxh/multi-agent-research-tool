@@ -1,5 +1,5 @@
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from graph.state import ResearchState
 from graph.nodes.planner import planner_node
 from graph.nodes.researcher import researcher_node, fan_out_researchers
@@ -25,8 +25,9 @@ def build_graph():
     )
     g.add_edge("writer", END)
 
-    return g  # return uncompiled, we compile in lifespan
+    return g  # compiled in lifespan with checkpointer
 
 
 builder = build_graph()
-graph = None  # will be set in lifespan
+
+
