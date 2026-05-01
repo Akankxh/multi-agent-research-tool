@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 export default function ReportCard({ report, status, threadId, reportRef }) {
   // Calculate word count and read time
   const wordCount = report.split(/\s+/).filter(word => word.length > 0).length
-  const readTimeMinutes = Math.ceil(wordCount / 200) // Average reading speed
+  const readTimeMinutes = Math.ceil(wordCount / 200)
 
   // Extract source links from References section
   const extractSourceLinks = (markdown) => {

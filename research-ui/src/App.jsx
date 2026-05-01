@@ -8,7 +8,6 @@ import ReportCard from './components/ReportCard'
 import HistoryTab from './components/HistoryTab'
 import toast, { Toaster } from 'react-hot-toast'
 
-// App.jsx
 const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 function generateUUID() {
@@ -21,37 +20,44 @@ function generateUUID() {
 
 export default function App() {
   const [query, setQuery] = useState('')
-  const [threadId, setThreadId] = useState(generateUUID)  // auto-generated on mount
+  const [threadId, setThreadId] = useState(generateUUID)
   const [status, setStatus] = useState('idle')
   const [nodes, setNodes] = useState([])
   const [criticData, setCriticData] = useState(null)
   const [reportTokens, setReportTokens] = useState('')
-  const [savedThreads, setSavedThreads] = useState([])
-  const [activeTab, setActiveTab] = useState('research')
-  const [error, setError] = useState(null)
-  const [isDarkMode, setIsDarkMode] = useState(true)
-  const reportRef = useRef(null)
-
-  // Load from localStorage on mount
-  useEffect(() => {
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const darkMode = localStorage.getItem('isDarkMode')
+    return darkMode !== null ? JSON.parse(darkMode) : true
+  })
+  const [savedThreads, setSavedThreads] = useState(() => {
     const saved = localStorage.getItem('savedThreads')
     if (saved) {
       try {
-        setSavedThreads(JSON.parse(saved))
+        return JSON.parse(saved)
       } catch (e) {
         console.error('Failed to parse saved threads:', e)
+        return []
       }
     }
-    const darkMode = localStorage.getItem('isDarkMode')
-    const isDark = darkMode !== null ? JSON.parse(darkMode) : true
-    setIsDarkMode(isDark)
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
-  }, [])
+    return []
+  })
+  const [activeTab, setActiveTab] = useState('research')
+  const [error, setError] = useState(null)
+  const reportRef = useRef(null)
+
+  // Set theme on mount and whenever isDarkMode changes
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light')
+  }, [isDarkMode])
+
+  // Save to localStorage when savedThreads changes
+  useEffect(() => {
+    localStorage.setItem('savedThreads', JSON.stringify(savedThreads))
+  }, [savedThreads])
 
   // Save dark mode preference
   useEffect(() => {
     localStorage.setItem('isDarkMode', JSON.stringify(isDarkMode))
-    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light')
   }, [isDarkMode])
 
   const reset = () => {
@@ -67,17 +73,15 @@ export default function App() {
     reset()
     setStatus('running')
 
-    // Add to saved threads immediately and save to localStorage
-    const newThread = { id: threadId, query: query.trim(), ts: new Date().toLocaleTimeString() }
-    setSavedThreads(prev => {
-      const updated = [newThread, ...prev.slice(0, 9)]
-      localStorage.setItem('savedThreads', JSON.stringify(updated))
-      return updated
-    })
+    // Add to saved threads immediately
+    setSavedThreads(prev => [
+      { id: threadId, query: query.trim(), ts: new Date().toLocaleTimeString() },
+      ...prev.slice(0, 9),
+    ])
 
     const body = JSON.stringify({
       query: query.trim(),
-      thread_id: threadId,  // always use the displayed thread_id
+      thread_id: threadId,
     })
 
     try {
@@ -103,9 +107,6 @@ export default function App() {
           if (!line.startsWith('data: ')) continue
           const data = JSON.parse(line.slice(6))
 
-          if (data.thread_id) {
-            // Thread ID already added at start
-          }
           if (data.node) {
             setNodes(prev => [...prev, data.node])
             if (data.node === 'critic') setCriticData(data)
@@ -118,7 +119,6 @@ export default function App() {
           if (data.done) {
             setStatus('done')
             toast.success('Research completed successfully!')
-            // Auto-generate fresh thread_id for the next run
             setThreadId(generateUUID())
           }
         }

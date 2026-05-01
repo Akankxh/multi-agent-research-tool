@@ -17,7 +17,6 @@ function generateUUID() {
 }
 
 export default function QueryCard({ query, setQuery, threadId, setThreadId, status, onRun }) {
-
   const copyThreadId = () => {
     navigator.clipboard.writeText(threadId)
     toast.success('Thread ID copied to clipboard!')
