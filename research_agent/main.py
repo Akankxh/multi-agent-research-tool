@@ -2,7 +2,7 @@ import json
 import os
 import uuid
 from contextlib import asynccontextmanager
-
+from psycopg_pool import AsyncConnectionPool
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,8 +21,14 @@ DATABASE_URL = os.environ["DATABASE_URL"]  # reads from .env
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global graph
-    async with AsyncPostgresSaver.from_conn_string(DATABASE_URL) as checkpointer:
-        await checkpointer.setup()  # creates tables on first run, no-op after
+
+    async with AsyncConnectionPool(
+        conninfo=DATABASE_URL,
+        max_size=10,
+        kwargs={"autocommit": True, "prepare_threshold": 0},
+    ) as pool:
+        checkpointer = AsyncPostgresSaver(pool)
+        await checkpointer.setup()
         graph = builder.compile(checkpointer=checkpointer)
         yield
 

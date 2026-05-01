@@ -59,7 +59,7 @@ def critic_node(state: ResearchState) -> dict:
     return {
         "sub_questions": updated_sqs,
         "critique": data["critique"],
-        "retry_count": state["retry_count"] + 1,
+        "retry_count": (state.get("retry_count") or 0) + 1,  # guard against None
     }
 
 
@@ -68,6 +68,7 @@ def should_retry(state: ResearchState) -> str:
         sq["quality_score"] < 0.6
         for sq in state["sub_questions"]
     )
-    if has_weak and state["retry_count"] < 2:
+    retry_count = state.get("retry_count") or 0
+    if has_weak and retry_count < 2:
         return "retry"
     return "write"
