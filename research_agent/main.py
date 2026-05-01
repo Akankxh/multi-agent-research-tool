@@ -66,7 +66,7 @@ async def research(req: QueryRequest):
         writer_active = False
 
         async for event in graph.astream_events(
-            {"query": req.query, "messages": []},
+            {"query": req.query},
             config=config,
             version="v2",
         ):
