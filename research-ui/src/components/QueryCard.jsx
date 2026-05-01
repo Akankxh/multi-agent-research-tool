@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 const EXAMPLE_QUERIES = [
   'Impact of LLMs on software engineering jobs in 2025',
@@ -16,12 +17,10 @@ function generateUUID() {
 }
 
 export default function QueryCard({ query, setQuery, threadId, setThreadId, status, onRun }) {
-  const [copied, setCopied] = useState(false)
 
   const copyThreadId = () => {
     navigator.clipboard.writeText(threadId)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    toast.success('Thread ID copied to clipboard!')
   }
 
   const refreshThreadId = () => {
@@ -46,7 +45,7 @@ export default function QueryCard({ query, setQuery, threadId, setThreadId, stat
           <span className="thread-id-value">{threadId}</span>
           <div className="thread-id-actions">
             <button className="icon-btn" title="Copy thread ID" onClick={copyThreadId}>
-              {copied ? '✓' : '⎘'}
+              ⎘
             </button>
             <button
               className="icon-btn"

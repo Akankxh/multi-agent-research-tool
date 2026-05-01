@@ -1,4 +1,4 @@
-export default function Sidebar({ activeTab, setActiveTab, savedThreads, onLoadReport, apiBase }) {
+export default function Sidebar({ activeTab, setActiveTab, savedThreads, onLoadReport, apiBase, isDarkMode, setIsDarkMode }) {
   return (
     <aside className="sidebar">
       <div className="logo">
@@ -23,6 +23,16 @@ export default function Sidebar({ activeTab, setActiveTab, savedThreads, onLoadR
           <span>🕑</span> Past Runs
         </button>
       </nav>
+
+      <div className="theme-toggle">
+        <button
+          className="theme-btn"
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDarkMode ? '☀️' : '🌙'}
+        </button>
+      </div>
 
       {savedThreads.length > 0 && (
         <div className="thread-list">
