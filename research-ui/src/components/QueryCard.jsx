@@ -61,13 +61,12 @@ export default function QueryCard({ query, setQuery, threadId, setThreadId, stat
 
       <div className="query-row">
         <button
-          className={`run-btn ${status === 'running' ? 'running' : ''}`}
-          onClick={onRun}
-          disabled={status === 'running' || !query.trim()}
+        type="button"
+        className={`run-btn ${status === 'running' ? 'running' : ''}`}
+        onClick={onRun}
+        disabled={status === 'running' || !query.trim()}
         >
-          {status === 'running'
-            ? <><span className="spinner" /> Running…</>
-            : '⚡ Run Research'}
+        {status === 'running' ? <><span className="spinner" /> Running…</> : '⚡ Run Research'}
         </button>
       </div>
 

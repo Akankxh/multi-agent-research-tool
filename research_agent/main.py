@@ -33,10 +33,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://multi-agent-research-tool-1.onrender.com",
+        "https://research-agent-frontend.onrender.com",  # your actual frontend URL
     ],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=False,
 )
 
 
